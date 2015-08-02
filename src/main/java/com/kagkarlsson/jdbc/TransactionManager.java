@@ -11,6 +11,7 @@ public class TransactionManager {
 
 	private static final Logger LOG = LoggerFactory.getLogger(TransactionManager.class);
 
+	ThreadLocal<Connection> currentTransaction = new ThreadLocal<>();
 	private final DataSource dataSource;
 
 	public TransactionManager(DataSource dataSource) {
@@ -18,13 +19,21 @@ public class TransactionManager {
 	}
 
 	public <T> T inTransaction(DoInTransaction<T> doInTransaction) {
-		//TODO check if already in transaction
+		if (currentTransaction.get() != null) {
+			throw new RuntimeException("Cannot start new transaction when there already is an ongoing transaction.");
+		}
+
+		boolean restoreAutocommit = false;
 		try (Connection connection = dataSource.getConnection()) {
 
-			connection.setAutoCommit(false);
+			if (connection.getAutoCommit()) {
+				connection.setAutoCommit(false);
+				restoreAutocommit = true;
+			}
 
 			final T result;
 			try {
+				currentTransaction.set(connection);
 				result = doInTransaction.doInTransaction();
 			} catch (RuntimeException applicationException) {
 				rollback(connection, applicationException);
@@ -32,12 +41,26 @@ public class TransactionManager {
 			}
 
 			commit(connection);
+			if (restoreAutocommit) {
+				restoreAutocommit(connection);
+			}
 			return result;
 
 		} catch (SQLException openCloseException) {
 			throw new RuntimeException(openCloseException);
+		} finally {
+			currentTransaction.remove();
 		}
 	}
+
+	private void restoreAutocommit(Connection connection) {
+		try {
+			connection.setAutoCommit(true);
+		} catch (SQLException e) {
+			throw new RuntimeException("Exception when restoring autocommit on connection. Transaction is already committed, but connection might be broken afterwards.", e);
+		}
+	}
+
 
 	private void commit(Connection connection) {
 		try {

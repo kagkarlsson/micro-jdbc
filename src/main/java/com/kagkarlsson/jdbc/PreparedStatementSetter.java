@@ -7,4 +7,11 @@ public interface PreparedStatementSetter {
 
 	void setParameters(PreparedStatement preparedStatement) throws SQLException;
 
+
+	PreparedStatementSetter NOOP = new PreparedStatementSetter() {
+		@Override
+		public void setParameters(PreparedStatement preparedStatement) throws SQLException {
+		}
+	};
+
 }

@@ -32,23 +32,23 @@ public class JdbcRunner {
 	private <T> T execute(String query, PreparedStatementSetter setParameters, AfterExecution<T> afterExecution) {
 		return withConnection(c -> {
 
-			List<AutoCloseable> closables = new ArrayList<>();
-
+			PreparedStatement preparedStatement = null;
 			try {
-				PreparedStatement preparedStatement;
+
 				try {
 					preparedStatement = c.prepareStatement(query);
 				} catch (SQLException e) {
 					throw new RuntimeException("Error when preparing statement.", e);
 				}
-				closables.add(preparedStatement);
 
 				try {
+					LOG.trace("Setting parameters of prepared statement.");
 					setParameters.setParameters(preparedStatement);
 				} catch (SQLException e) {
 					throw new RuntimeException(e);
 				}
 				try {
+					LOG.trace("Executing prepared statement");
 					preparedStatement.execute();
 					return afterExecution.doAfterExecution(preparedStatement);
 				} catch (SQLException e) {
@@ -56,7 +56,7 @@ public class JdbcRunner {
 				}
 
 			} finally {
-				silentClose(closables);
+				silentClose(preparedStatement);
 			}
 		});
 	}
@@ -69,15 +69,10 @@ public class JdbcRunner {
 		}
 	}
 
-	private void silentClose(List<AutoCloseable> closeable) {
-		for (int i = closeable.size() - 1; i >= 0; i--) {
-			silentClose(closeable.get(i));
-		}
-	}
-
 	private <T> T withConnection(Function<Connection, T> doWithConnection) {
 		Connection c;
 		try {
+			LOG.trace("Getting connection from datasource");
 			c = dataSource.getConnection();
 		} catch (SQLException e) {
 			throw new RuntimeException("Unable to open connection", e);
