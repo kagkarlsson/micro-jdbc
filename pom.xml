@@ -22,6 +22,8 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven.compiler.source>1.8</maven.compiler.source>
 		<maven.compiler.target>1.8</maven.compiler.target>
+		<skipChecks>false</skipChecks>
+		<failOnMissingHeader>true</failOnMissingHeader>
 	</properties>
 
 	<dependencies>
@@ -84,7 +86,6 @@
 						<licenseMapping>
 							<param>${project.basedir}/src/main/notice/license-mappings.xml</param>
 						</licenseMapping>
-						<skipChecks>true</skipChecks><!-- TODO:remove -->
 					</configuration>
 				</plugin>
 				<plugin>
@@ -182,7 +183,7 @@
 							<goal>check</goal>
 						</goals>
 						<configuration>
-							<failIfMissing>false</failIfMissing> <!-- TODO: remove -->
+							<failIfMissing>${failOnMissingHeader}</failIfMissing>
 						</configuration>
 					</execution>
 				</executions>
@@ -228,7 +229,7 @@
 							<goal>check</goal>
 						</goals>
 						<configuration>
-							<skipChecks>true</skipChecks><!-- TODO: remove -->
+							<skipChecks>${skipChecks}</skipChecks>
 						</configuration>
 					</execution>
 				</executions>
@@ -257,13 +258,29 @@
 						</goals>
 						<phase>test</phase>
 						<configuration>
-							<skip>true</skip><!-- TODO: remove -->
+							<skip>${skipChecks}</skip>
 						</configuration>
 					</execution>
 				</executions>
 			</plugin>
 		</plugins>
+
 	</build>
+
+	<profiles>
+		<profile>
+			<id>skipChecks</id>
+			<activation>
+				<property>
+					<name>skipChecks</name>
+					<value>true</value>
+				</property>
+			</activation>
+			<properties>
+				<failOnMissingHeader>false</failOnMissingHeader>
+			</properties>
+		</profile>
+	</profiles>
 
 	<scm>
 		<connection>scm:git:git@github.com:kagkarlsson/micro-jdbc.git</connection>

@@ -10,7 +10,10 @@ This software includes third party software subject to the following licenses:
 
   Hamcrest Core under New BSD License
   Hamcrest library under New BSD License
+  HyperSQL Database under HSQLDB License, a BSD open source license
   JUnit under Eclipse Public License 1.0
+  Logback Classic Module under Eclipse Public License - v 1.0 or GNU Lesser General Public License
+  Logback Core Module under Eclipse Public License - v 1.0 or GNU Lesser General Public License
   micro-jdbc under The Apache Software License, Version 2.0
   Mockito under The MIT License
   Objenesis under Apache 2

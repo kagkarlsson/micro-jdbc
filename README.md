@@ -1,1 +1,1 @@
-# micro-jdbc
+# micro-jdbc-templates
