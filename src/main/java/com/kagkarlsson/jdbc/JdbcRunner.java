@@ -71,7 +71,7 @@ public class JdbcRunner {
 				}
 
 			} finally {
-				silentClose(preparedStatement);
+				nonThrowingClose(preparedStatement);
 			}
 		});
 	}
@@ -96,7 +96,7 @@ public class JdbcRunner {
 		try {
 			return doWithConnection.apply(c);
 		} finally {
-			silentClose(c);
+			nonThrowingClose(c);
 		}
 	}
 
@@ -135,12 +135,12 @@ public class JdbcRunner {
 			}
 
 		} finally {
-			silentClose(rs);
+			nonThrowingClose(rs);
 		}
 	}
 
 
-	private void silentClose(AutoCloseable toClose) {
+	private void nonThrowingClose(AutoCloseable toClose) {
 		if (toClose == null) {
 			return;
 		}
@@ -148,7 +148,7 @@ public class JdbcRunner {
 			LOG.trace("Closing " + toClose.getClass().getSimpleName());
 			toClose.close();
 		} catch (Exception e) {
-			LOG.debug("Exception on close of " + toClose.getClass().getSimpleName(), e);
+			LOG.warn("Exception on close of " + toClose.getClass().getSimpleName(), e);
 		}
 	}
 
