@@ -27,6 +27,8 @@ public class Mappers {
 
 	public static final SingleResultMapper<String> SINGLE_STRING = new SingleResultMapper<>(rs -> rs.getString(1));
 
+	public static final ResultSetMapper<Boolean> NON_EMPTY_RESULTSET = new NonEmptyResultMapper();
+
 
 	public static class SingleResultMapper<T> implements ResultSetMapper<T> {
 
@@ -51,10 +53,17 @@ public class Mappers {
 		}
 	}
 
-	public static class SingleResultExpected extends RuntimeException {
+	public static class SingleResultExpected extends SQLRuntimeException {
 
 		public SingleResultExpected(String message) {
 			super(message);
+		}
+	}
+
+	private static class NonEmptyResultMapper implements ResultSetMapper<Boolean> {
+		@Override
+		public Boolean map(ResultSet resultSet) throws SQLException {
+			return resultSet.next();
 		}
 	}
 }

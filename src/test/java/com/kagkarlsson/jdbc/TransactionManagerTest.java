@@ -49,9 +49,9 @@ public class TransactionManagerTest {
 	@Test
 	public void should_rollback_if_exception() throws SQLException {
 		try {
-			tm.inTransaction(() -> {throw new RuntimeException();});
+			tm.inTransaction(() -> {throw new SQLRuntimeException();});
 			fail("Should have thrown exception");
-		} catch (RuntimeException e) {
+		} catch (SQLRuntimeException e) {
 		}
 
 		verify(connection).getAutoCommit();
@@ -67,7 +67,7 @@ public class TransactionManagerTest {
 		doThrow(new SQLException()).when(connection).commit();
 		try {
 			tm.inTransaction(() -> null);
-		} catch (RuntimeException e) {
+		} catch (SQLRuntimeException e) {
 		}
 
 		verify(connection).getAutoCommit();
@@ -85,7 +85,7 @@ public class TransactionManagerTest {
 		doThrow(new SQLException()).when(connection).rollback();
 		try {
 			tm.inTransaction(() -> null);
-		} catch (RuntimeException e) {
+		} catch (SQLRuntimeException e) {
 		}
 
 		verify(connection).getAutoCommit();

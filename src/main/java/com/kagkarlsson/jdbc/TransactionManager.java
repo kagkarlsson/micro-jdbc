@@ -35,7 +35,7 @@ public class TransactionManager {
 
 	public <T> T inTransaction(DoInTransaction<T> doInTransaction) {
 		if (currentTransaction.get() != null) {
-			throw new RuntimeException("Cannot start new transaction when there already is an ongoing transaction.");
+			throw new SQLRuntimeException("Cannot start new transaction when there already is an ongoing transaction.");
 		}
 
 		boolean restoreAutocommit = false;
@@ -50,7 +50,7 @@ public class TransactionManager {
 			try {
 				currentTransaction.set(connection);
 				result = doInTransaction.doInTransaction();
-			} catch (RuntimeException applicationException) {
+			} catch (SQLRuntimeException applicationException) {
 				rollback(connection, applicationException);
 				throw applicationException;
 			}
@@ -62,7 +62,7 @@ public class TransactionManager {
 			return result;
 
 		} catch (SQLException openCloseException) {
-			throw new RuntimeException(openCloseException);
+			throw new SQLRuntimeException(openCloseException);
 		} finally {
 			currentTransaction.remove();
 		}
@@ -72,7 +72,7 @@ public class TransactionManager {
 		try {
 			connection.setAutoCommit(true);
 		} catch (SQLException e) {
-			throw new RuntimeException("Exception when restoring autocommit on connection. Transaction is already committed, but connection might be broken afterwards.", e);
+			throw new SQLRuntimeException("Exception when restoring autocommit on connection. Transaction is already committed, but connection might be broken afterwards.", e);
 		}
 	}
 
@@ -90,7 +90,7 @@ public class TransactionManager {
 			connection.rollback();
 		} catch (SQLException rollbackException) {
 			LOG.error("Original application exception overridden by rollback-exception. Throwing rollback-exception. Original application exception: ", originalException);
-			throw new RuntimeException(rollbackException);
+			throw new SQLRuntimeException(rollbackException);
 		} catch (RuntimeException rollbackException) {
 			LOG.error("Original application exception overridden by rollback-exception. Throwing rollback-exception. Original application exception: ", originalException);
 			throw rollbackException;

@@ -53,14 +53,14 @@ public class JdbcRunner {
 				try {
 					preparedStatement = c.prepareStatement(query);
 				} catch (SQLException e) {
-					throw new RuntimeException("Error when preparing statement.", e);
+					throw new SQLRuntimeException("Error when preparing statement.", e);
 				}
 
 				try {
 					LOG.trace("Setting parameters of prepared statement.");
 					setParameters.setParameters(preparedStatement);
 				} catch (SQLException e) {
-					throw new RuntimeException(e);
+					throw new SQLRuntimeException(e);
 				}
 				try {
 					LOG.trace("Executing prepared statement");
@@ -76,11 +76,11 @@ public class JdbcRunner {
 		});
 	}
 
-	private RuntimeException translateException(SQLException ex) {
+	private SQLRuntimeException translateException(SQLException ex) {
 		if (ex instanceof SQLIntegrityConstraintViolationException) {
 			return new IntegrityConstraintViolation(ex);
 		} else {
-			return new RuntimeException(ex);
+			return new SQLRuntimeException(ex);
 		}
 	}
 
@@ -90,7 +90,7 @@ public class JdbcRunner {
 			LOG.trace("Getting connection from datasource");
 			c = dataSource.getConnection();
 		} catch (SQLException e) {
-			throw new RuntimeException("Unable to open connection", e);
+			throw new SQLRuntimeException("Unable to open connection", e);
 		}
 
 		try {
@@ -125,13 +125,13 @@ public class JdbcRunner {
 			try {
 				rs = executedPreparedStatement.getResultSet();
 			} catch (SQLException e) {
-				throw new RuntimeException(e);
+				throw new SQLRuntimeException(e);
 			}
 
 			try {
 				return doWithResultSet.withResultSet(rs);
 			} catch (SQLException e) {
-				throw new RuntimeException(e);
+				throw new SQLRuntimeException(e);
 			}
 
 		} finally {

@@ -17,8 +17,21 @@ package com.kagkarlsson.jdbc;
 
 import java.sql.SQLException;
 
-public class IntegrityConstraintViolation extends SQLRuntimeException {
-	public IntegrityConstraintViolation(SQLException ex) {
+public class SQLRuntimeException extends RuntimeException {
+
+	public SQLRuntimeException() {
+		super();
+	}
+
+	public SQLRuntimeException(String message) {
+		super(message);
+	}
+
+	public SQLRuntimeException(Throwable ex) {
 		super(ex);
+	}
+
+	public SQLRuntimeException(String message, SQLException cause) {
+		super(message, cause);
 	}
 }
