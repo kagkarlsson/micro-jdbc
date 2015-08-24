@@ -1,9 +1,5 @@
 package com.github.kagkarlsson.jdbc;
 
-import org.hsqldb.Database;
-import org.hsqldb.DatabaseManager;
-import org.hsqldb.jdbc.JDBCDataSource;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -11,7 +7,6 @@ import org.junit.rules.ExpectedException;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.hamcrest.Matchers.is;
@@ -21,21 +16,14 @@ import static org.junit.Assert.assertThat;
 public class JdbcRunnerIT {
 
 	@Rule
+	public HsqlTestDatabaseRule database = new HsqlTestDatabaseRule();
+	@Rule
 	public ExpectedException expectedException = ExpectedException.none();
 	private JdbcRunner jdbcRunner;
 
 	@Before
 	public void setUp() {
-		final JDBCDataSource ds = new JDBCDataSource();
-		ds.setUrl("jdbc:hsqldb:mem:jdbcrunner");
-		ds.setUser("sa");
-
-		jdbcRunner = new JdbcRunner(ds);
-	}
-
-	@After
-	public void tearDown() {
-		DatabaseManager.closeDatabases(Database.CLOSEMODE_IMMEDIATELY);
+		jdbcRunner = new JdbcRunner(database.getDataSource());
 	}
 
 	@Test
@@ -100,18 +88,5 @@ public class JdbcRunnerIT {
 			return rs.getInt("column1");
 		}
 	}
-
-	private static class ResultSetMapper implements com.github.kagkarlsson.jdbc.ResultSetMapper<List<Integer>> {
-
-		@Override
-		public List<Integer> map(ResultSet rs) throws SQLException {
-			List<Integer> results = new ArrayList<>();
-			while (rs.next()) {
-				results.add(rs.getInt("column1"));
-			}
-			return results;
-		}
-	}
-
 
 }
