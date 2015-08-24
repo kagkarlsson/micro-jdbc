@@ -1,12 +1,9 @@
-package com.kagkarlsson.jdbc;
+package com.github.kagkarlsson.jdbc;
 
-import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.Spy;
 import org.mockito.runners.MockitoJUnitRunner;
 
 import javax.sql.DataSource;

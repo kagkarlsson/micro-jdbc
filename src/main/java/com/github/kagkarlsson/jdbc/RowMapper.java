@@ -13,25 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.kagkarlsson.jdbc;
+package com.github.kagkarlsson.jdbc;
 
+import java.sql.ResultSet;
 import java.sql.SQLException;
 
-public class SQLRuntimeException extends RuntimeException {
+public interface RowMapper<T> {
 
-	public SQLRuntimeException() {
-		super();
-	}
+	T map(ResultSet rs) throws SQLException;
 
-	public SQLRuntimeException(String message) {
-		super(message);
-	}
-
-	public SQLRuntimeException(Throwable ex) {
-		super(ex);
-	}
-
-	public SQLRuntimeException(String message, SQLException cause) {
-		super(message, cause);
-	}
 }

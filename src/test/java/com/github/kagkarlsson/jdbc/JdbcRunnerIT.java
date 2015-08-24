@@ -1,4 +1,4 @@
-package com.kagkarlsson.jdbc;
+package com.github.kagkarlsson.jdbc;
 
 import org.hsqldb.Database;
 import org.hsqldb.DatabaseManager;
@@ -14,7 +14,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.kagkarlsson.jdbc.PreparedStatementSetter.NOOP;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.junit.Assert.assertThat;
@@ -41,15 +40,15 @@ public class JdbcRunnerIT {
 
 	@Test
 	public void test_basics() {
-		jdbcRunner.execute("create table table1 ( column1 INT);", NOOP);
+		jdbcRunner.execute("create table table1 ( column1 INT);", PreparedStatementSetter.NOOP);
 		final int inserted = jdbcRunner.execute("insert into table1(column1) values (?)", ps -> ps.setInt(1, 1));
 		assertThat(inserted, is(1));
 
-		final List<Integer> rowMapped = jdbcRunner.query("select * from table1", NOOP, new TableRowMapper());
+		final List<Integer> rowMapped = jdbcRunner.query("select * from table1", PreparedStatementSetter.NOOP, new TableRowMapper());
 		assertThat(rowMapped, hasSize(1));
 		assertThat(rowMapped.get(0), is(1));
 
-		assertThat(jdbcRunner.query("select * from table1", NOOP, Mappers.SINGLE_INT), is(1));
+		assertThat(jdbcRunner.query("select * from table1", PreparedStatementSetter.NOOP, Mappers.SINGLE_INT), is(1));
 
 		final int updated = jdbcRunner.execute("update table1 set column1 = ? where column1 = ?",
 				ps -> {
@@ -61,16 +60,16 @@ public class JdbcRunnerIT {
 
 	@Test
 	public void test_map_multiple_rows() {
-		jdbcRunner.execute("create table table1 ( column1 INT);", NOOP);
-		jdbcRunner.execute("insert into table1(column1) values (1)", NOOP);
-		jdbcRunner.execute("insert into table1(column1) values (2)", NOOP);
+		jdbcRunner.execute("create table table1 ( column1 INT);", PreparedStatementSetter.NOOP);
+		jdbcRunner.execute("insert into table1(column1) values (1)", PreparedStatementSetter.NOOP);
+		jdbcRunner.execute("insert into table1(column1) values (2)", PreparedStatementSetter.NOOP);
 
-		final List<Integer> rowMapped = jdbcRunner.query("select * from table1", NOOP, new TableRowMapper());
+		final List<Integer> rowMapped = jdbcRunner.query("select * from table1", PreparedStatementSetter.NOOP, new TableRowMapper());
 		assertThat(rowMapped, hasSize(2));
 		assertThat(rowMapped.get(0), is(1));
 		assertThat(rowMapped.get(1), is(2));
 
-		final List<Integer> resultSetMapped = jdbcRunner.query("select * from table1", NOOP, new TableRowMapper());
+		final List<Integer> resultSetMapped = jdbcRunner.query("select * from table1", PreparedStatementSetter.NOOP, new TableRowMapper());
 		assertThat(resultSetMapped, hasSize(2));
 		assertThat(resultSetMapped.get(0), is(1));
 		assertThat(resultSetMapped.get(1), is(2));
@@ -80,19 +79,19 @@ public class JdbcRunnerIT {
 	public void should_map_constraint_violations_to_custom_exception_for_primary_key_constraint() {
 		expectedException.expect(IntegrityConstraintViolation.class);
 
-		jdbcRunner.execute("create table table1 ( column1 INT PRIMARY KEY);", NOOP);
-		jdbcRunner.execute("insert into table1(column1) values (1)", NOOP);
-		jdbcRunner.execute("insert into table1(column1) values (1)", NOOP);
+		jdbcRunner.execute("create table table1 ( column1 INT PRIMARY KEY);", PreparedStatementSetter.NOOP);
+		jdbcRunner.execute("insert into table1(column1) values (1)", PreparedStatementSetter.NOOP);
+		jdbcRunner.execute("insert into table1(column1) values (1)", PreparedStatementSetter.NOOP);
 	}
 
 	@Test
 	public void should_map_constraint_violations_to_custom_exception_for_unique_constraint_() {
 		expectedException.expect(IntegrityConstraintViolation.class);
 
-		jdbcRunner.execute("create table table1 ( column1 INT);", NOOP);
-		jdbcRunner.execute("alter table table1 add constraint col1_uidx unique (column1);", NOOP);
-		jdbcRunner.execute("insert into table1(column1) values (1)", NOOP);
-		jdbcRunner.execute("insert into table1(column1) values (1)", NOOP);
+		jdbcRunner.execute("create table table1 ( column1 INT);", PreparedStatementSetter.NOOP);
+		jdbcRunner.execute("alter table table1 add constraint col1_uidx unique (column1);", PreparedStatementSetter.NOOP);
+		jdbcRunner.execute("insert into table1(column1) values (1)", PreparedStatementSetter.NOOP);
+		jdbcRunner.execute("insert into table1(column1) values (1)", PreparedStatementSetter.NOOP);
 	}
 
 	private static class TableRowMapper implements RowMapper<Integer> {
@@ -102,7 +101,7 @@ public class JdbcRunnerIT {
 		}
 	}
 
-	private static class ResultSetMapper implements com.kagkarlsson.jdbc.ResultSetMapper<List<Integer>> {
+	private static class ResultSetMapper implements com.github.kagkarlsson.jdbc.ResultSetMapper<List<Integer>> {
 
 		@Override
 		public List<Integer> map(ResultSet rs) throws SQLException {

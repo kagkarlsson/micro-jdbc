@@ -13,12 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.kagkarlsson.jdbc;
+package com.github.kagkarlsson.jdbc;
 
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.function.Function;
 
-public class IntegrityConstraintViolation extends SQLRuntimeException {
-	public IntegrityConstraintViolation(SQLException ex) {
-		super(ex);
-	}
+public interface ResultSetMapper<T>{
+
+	T map(ResultSet resultSet) throws SQLException;
+
 }
