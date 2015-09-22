@@ -79,6 +79,7 @@
 						<licenseMapping>
 							<param>${project.basedir}/src/main/notice/license-mappings.xml</param>
 						</licenseMapping>
+						<skipChecks>${skipChecks}</skipChecks>
 					</configuration>
 				</plugin>
 				<plugin>
@@ -96,11 +97,12 @@
 							<exclude>src/main/notice/license-mappings.xml</exclude>
 							<exclude>src/test/**</exclude>
 						</excludes>
+						<failIfMissing>${failOnMissingHeader}</failIfMissing>
 					</configuration>
 				</plugin>
 				<plugin>
 					<artifactId>maven-enforcer-plugin</artifactId>
-					<version>1.4</version>
+					<version>1.4.1</version>
 					<configuration>
 						<rules>
 							<bannedDependencies>
@@ -124,13 +126,7 @@
 								</message>
 							</bannedDependencies>
 						</rules>
-					</configuration>
-				</plugin>
-				<plugin>
-					<artifactId>maven-release-plugin</artifactId>
-					<version>2.5.1</version>
-					<configuration>
-						<tagNameFormat>@{project.version}</tagNameFormat>
+						<skip>${skipChecks}</skip>
 					</configuration>
 				</plugin>
 
@@ -157,7 +153,7 @@
 						<execution>
 							<id>attach-sources</id>
 							<goals>
-								<goal>jar</goal>
+								<goal>jar-no-fork</goal>
 							</goals>
 							<configuration>
 								<includePom>true</includePom>
@@ -179,8 +175,21 @@
 						</execution>
 					</executions>
 				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-release-plugin</artifactId>
+					<version>2.5.1</version>
+					<configuration>
+						<autoVersionSubmodules>true</autoVersionSubmodules>
+						<useReleaseProfile>false</useReleaseProfile>
+						<releaseProfiles>release</releaseProfiles>
+						<goals>deploy</goals>
+						<tagNameFormat>@{project.version}</tagNameFormat>
+					</configuration>
+				</plugin>
 			</plugins>
 		</pluginManagement>
+
 		<plugins>
 			<plugin>
 				<artifactId>maven-dependency-plugin</artifactId>
@@ -200,49 +209,13 @@
 			<plugin>
 				<groupId>com.mycila</groupId>
 				<artifactId>license-maven-plugin</artifactId>
-				<executions>
-					<execution>
-						<id>check-license-header</id>
-						<phase>test</phase>
-						<goals>
-							<goal>check</goal>
-						</goals>
-						<configuration>
-							<failIfMissing>${failOnMissingHeader}</failIfMissing>
-						</configuration>
-					</execution>
-				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.jasig.maven</groupId>
 				<artifactId>maven-notice-plugin</artifactId>
-				<executions>
-					<execution>
-						<id>check-NOTICE-file</id>
-						<phase>verify</phase>
-						<goals>
-							<goal>check</goal>
-						</goals>
-						<configuration>
-							<skipChecks>${skipChecks}</skipChecks>
-						</configuration>
-					</execution>
-				</executions>
 			</plugin>
 			<plugin>
 				<artifactId>maven-enforcer-plugin</artifactId>
-				<executions>
-					<execution>
-						<id>test</id>
-						<goals>
-							<goal>enforce</goal>
-						</goals>
-						<phase>test</phase>
-						<configuration>
-							<skip>${skipChecks}</skip>
-						</configuration>
-					</execution>
-				</executions>
 			</plugin>
 		</plugins>
 
@@ -297,5 +270,9 @@
 			<url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
 		</repository>
 	</distributionManagement>
+
+	<prerequisites>
+		<maven>2.2.1</maven>
+	</prerequisites>
 
 </project>
