@@ -7,6 +7,15 @@
 	<artifactId>micro-jdbc</artifactId>
 	<version>0.2-SNAPSHOT</version>
 
+	<name>Micro JDBC</name>
+	<description>Simple low-level helpers for jdbc-access</description>
+	<url>https://github.com/kagkarlsson/micro-jdbc</url>
+	<developers>
+		<developer>
+			<name>Gustav Karlsson</name>
+			<email>gustav80@gmail.com</email>
+		</developer>
+	</developers>
 
 	<licenses>
 		<license>
