@@ -14,7 +14,7 @@ This software includes third party software subject to the following licenses:
   JUnit under Eclipse Public License 1.0
   Logback Classic Module under Eclipse Public License - v 1.0 or GNU Lesser General Public License
   Logback Core Module under Eclipse Public License - v 1.0 or GNU Lesser General Public License
-  micro-jdbc under The Apache Software License, Version 2.0
+  Micro JDBC under The Apache Software License, Version 2.0
   Mockito under The MIT License
   Objenesis under Apache 2
   SLF4J API Module under MIT License

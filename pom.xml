@@ -88,6 +88,15 @@
 						</licenseMapping>
 						<skipChecks>${skipChecks}</skipChecks>
 					</configuration>
+					<executions>
+						<execution>
+							<id>generate-notice-file</id>
+							<goals>
+								<goal>check</goal>
+							</goals>
+							<phase>verify</phase>
+						</execution>
+					</executions>
 				</plugin>
 				<plugin>
 					<groupId>com.mycila</groupId>
@@ -106,6 +115,15 @@
 						</excludes>
 						<failIfMissing>${failOnMissingHeader}</failIfMissing>
 					</configuration>
+					<executions>
+						<execution>
+							<id>check-license-header</id>
+							<goals>
+								<goal>check</goal>
+							</goals>
+							<phase>test</phase>
+						</execution>
+					</executions>
 				</plugin>
 				<plugin>
 					<artifactId>maven-enforcer-plugin</artifactId>
@@ -135,6 +153,15 @@
 						</rules>
 						<skip>${skipChecks}</skip>
 					</configuration>
+					<executions>
+						<execution>
+							<id>check-banned-dependencies</id>
+							<goals>
+								<goal>enforce</goal>
+							</goals>
+							<phase>test</phase>
+						</execution>
+					</executions>
 				</plugin>
 
 				<!-- Release plugins -->
