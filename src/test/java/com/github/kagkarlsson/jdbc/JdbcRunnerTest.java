@@ -13,7 +13,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.junit.Assert.assertThat;
 
-public class JdbcRunnerIT {
+public class JdbcRunnerTest {
 
 	@Rule
 	public HsqlTestDatabaseRule database = new HsqlTestDatabaseRule();
