@@ -65,8 +65,13 @@ public class JdbcRunner {
 				try {
 					LOG.trace("Executing prepared statement");
 					preparedStatement.execute();
-					return afterExecution.doAfterExecution(preparedStatement);
+					T returnValue = afterExecution.doAfterExecution(preparedStatement);
+
+					commitIfNecessary(c);
+
+					return returnValue;
 				} catch (SQLException e) {
+					rollbackIfNecessary(c);
 					throw translateException(e);
 				}
 
@@ -74,6 +79,26 @@ public class JdbcRunner {
 				nonThrowingClose(preparedStatement);
 			}
 		});
+	}
+
+	private void commitIfNecessary(Connection c) {
+		try {
+			if (!c.getAutoCommit()) {
+				c.commit();
+			}
+		} catch (SQLException e) {
+			throw new SQLRuntimeException("Failed to commit.", e);
+		}
+	}
+
+	private void rollbackIfNecessary(Connection c) {
+		try {
+			if (!c.getAutoCommit()) {
+				c.rollback();
+			}
+		} catch (SQLException e) {
+			throw new SQLRuntimeException("Failed to rollback.", e);
+		}
 	}
 
 	private SQLRuntimeException translateException(SQLException ex) {
