@@ -23,12 +23,12 @@ public class ExternallyManagedTransactionTest {
     @Rule
     public ExpectedException expectedException = ExpectedException.none();
     private JdbcRunner internalTransactions;
-    private JdbcRunner externalTransacitons;
+    private JdbcRunner externalTransactions;
 
     @Before
     public void setUp() {
-        internalTransactions = new JdbcRunner(new DisableAutoCommit(database.getDataSource()), false);
-        externalTransacitons = new JdbcRunner(new DisableAutoCommit(database.getDataSource()), true);
+        internalTransactions = new JdbcRunner(new DisableAutoCommit(database.getDataSource()), true);
+        externalTransactions = new JdbcRunner(new DisableAutoCommit(database.getDataSource()), false);
     }
 
     @Test
@@ -37,7 +37,7 @@ public class ExternallyManagedTransactionTest {
         assertThat(internalTransactions.execute("insert into table1(column1) values (?)", setInt(1)), is(1));
         assertThat(internalTransactions.query("select * from table1", PreparedStatementSetter.NOOP, Mappers.SINGLE_INT), is(1));
 
-        externalTransacitons.execute("update table1 set column1 = ?", setInt(5));
+        externalTransactions.execute("update table1 set column1 = ?", setInt(5));
         // should not have been committed
         assertThat(internalTransactions.query("select * from table1", PreparedStatementSetter.NOOP, Mappers.SINGLE_INT), is(1));
 

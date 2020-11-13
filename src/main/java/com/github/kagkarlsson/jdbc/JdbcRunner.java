@@ -28,7 +28,11 @@ public class JdbcRunner {
 	private static final Logger LOG = LoggerFactory.getLogger(JdbcRunner.class);
 	private final ConnectionSupplier connectionSupplier;
 
-	public JdbcRunner(DataSource dataSource, boolean externallyManagedTransactions) {
+	public JdbcRunner(DataSource dataSource) {
+		this(dataSource, false);
+	}
+
+	public JdbcRunner(DataSource dataSource, boolean commitWhenAutocommitDisabled) {
 		this(new ConnectionSupplier() {
 			@Override
 			public Connection getConnection() throws SQLException {
@@ -36,11 +40,12 @@ public class JdbcRunner {
 			}
 
 			@Override
-			public boolean externallyManagedTransactions() {
-				return externallyManagedTransactions;
+			public boolean commitWhenAutocommitDisabled() {
+				return commitWhenAutocommitDisabled;
 			}
 		});
 	}
+
 	public JdbcRunner(ConnectionSupplier connectionSupplier) {
 		this.connectionSupplier = connectionSupplier;
 	}
@@ -96,7 +101,7 @@ public class JdbcRunner {
 
 	private void commitIfNecessary(Connection c) {
 		try {
-			if (!connectionSupplier.externallyManagedTransactions() && !c.getAutoCommit()) {
+			if (connectionSupplier.commitWhenAutocommitDisabled() && !c.getAutoCommit()) {
 				c.commit();
 			}
 		} catch (SQLException e) {
@@ -106,7 +111,7 @@ public class JdbcRunner {
 
 	private void rollbackIfNecessary(Connection c) {
 		try {
-			if (!connectionSupplier.externallyManagedTransactions() && !c.getAutoCommit()) {
+			if (connectionSupplier.commitWhenAutocommitDisabled() && !c.getAutoCommit()) {
 				c.rollback();
 			}
 		} catch (SQLException e) {

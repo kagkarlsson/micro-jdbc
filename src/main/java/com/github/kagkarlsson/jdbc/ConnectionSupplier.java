@@ -20,5 +20,5 @@ import java.sql.SQLException;
 
 public interface ConnectionSupplier {
     Connection getConnection() throws SQLException;
-    boolean externallyManagedTransactions();
+    boolean commitWhenAutocommitDisabled();
 }
