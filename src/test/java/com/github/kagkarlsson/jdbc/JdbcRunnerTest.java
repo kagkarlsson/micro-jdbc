@@ -23,7 +23,7 @@ public class JdbcRunnerTest {
 
 	@Before
 	public void setUp() {
-		jdbcRunner = new JdbcRunner(database.getDataSource());
+		jdbcRunner = new JdbcRunner(database.getDataSource(), false);
 	}
 
 	@Test

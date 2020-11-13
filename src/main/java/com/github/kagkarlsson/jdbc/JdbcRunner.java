@@ -26,14 +26,27 @@ import java.util.function.Function;
 
 public class JdbcRunner {
 	private static final Logger LOG = LoggerFactory.getLogger(JdbcRunner.class);
-	private final DataSource dataSource;
+	private final ConnectionSupplier connectionSupplier;
 
-	public JdbcRunner(DataSource dataSource) {
-		this.dataSource = dataSource;
+	public JdbcRunner(DataSource dataSource, boolean externallyManagedTransactions) {
+		this(new ConnectionSupplier() {
+			@Override
+			public Connection getConnection() throws SQLException {
+				return dataSource.getConnection();
+			}
+
+			@Override
+			public boolean externallyManagedTransactions() {
+				return externallyManagedTransactions;
+			}
+		});
+	}
+	public JdbcRunner(ConnectionSupplier connectionSupplier) {
+		this.connectionSupplier = connectionSupplier;
 	}
 
 	public int execute(String query, PreparedStatementSetter setParameters) {
-		return execute(query, setParameters, (PreparedStatement p) -> p.getUpdateCount());
+		return execute(query, setParameters, Statement::getUpdateCount);
 	}
 
 	public <T> List<T> query(String query, PreparedStatementSetter setParameters, RowMapper<T> rowMapper) {
@@ -83,7 +96,7 @@ public class JdbcRunner {
 
 	private void commitIfNecessary(Connection c) {
 		try {
-			if (!c.getAutoCommit()) {
+			if (!connectionSupplier.externallyManagedTransactions() && !c.getAutoCommit()) {
 				c.commit();
 			}
 		} catch (SQLException e) {
@@ -93,7 +106,7 @@ public class JdbcRunner {
 
 	private void rollbackIfNecessary(Connection c) {
 		try {
-			if (!c.getAutoCommit()) {
+			if (!connectionSupplier.externallyManagedTransactions() && !c.getAutoCommit()) {
 				c.rollback();
 			}
 		} catch (SQLException e) {
@@ -113,7 +126,7 @@ public class JdbcRunner {
 		Connection c;
 		try {
 			LOG.trace("Getting connection from datasource");
-			c = dataSource.getConnection();
+			c = connectionSupplier.getConnection();
 		} catch (SQLException e) {
 			throw new SQLRuntimeException("Unable to open connection", e);
 		}
