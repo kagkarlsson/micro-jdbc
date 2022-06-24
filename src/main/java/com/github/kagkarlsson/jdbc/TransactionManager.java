@@ -27,9 +27,9 @@ public class TransactionManager {
 	private static final Logger LOG = LoggerFactory.getLogger(TransactionManager.class);
 
 	ThreadLocal<Connection> currentTransaction = new ThreadLocal<>();
-	private final DataSource dataSource;
+	private final ConnectionSupplier dataSource;
 
-	public TransactionManager(DataSource dataSource) {
+	public TransactionManager(ConnectionSupplier dataSource) {
 		this.dataSource = dataSource;
 	}
 
@@ -38,8 +38,8 @@ public class TransactionManager {
 			throw new SQLRuntimeException("Cannot start new transaction when there already is an ongoing transaction.");
 		}
 
-		boolean restoreAutocommit = false;
 		try (Connection connection = dataSource.getConnection()) {
+			boolean restoreAutocommit = false;
 
 			if (connection.getAutoCommit()) {
 				connection.setAutoCommit(false);
@@ -49,7 +49,7 @@ public class TransactionManager {
 			final T result;
 			try {
 				currentTransaction.set(connection);
-				result = doInTransaction.doInTransaction();
+				result = doInTransaction.doInTransaction(connection);
 			} catch (SQLRuntimeException applicationException) {
 				rollback(connection, applicationException);
 				throw applicationException;
@@ -90,14 +90,17 @@ public class TransactionManager {
 			connection.rollback();
 		} catch (SQLException rollbackException) {
 			LOG.error("Original application exception overridden by rollback-exception. Throwing rollback-exception. Original application exception: ", originalException);
-			throw new SQLRuntimeException(rollbackException);
+			final SQLRuntimeException rollbackRuntimeException = new SQLRuntimeException(rollbackException);
+			rollbackRuntimeException.addSuppressed(originalException);
+			throw rollbackRuntimeException;
 		} catch (RuntimeException rollbackException) {
 			LOG.error("Original application exception overridden by rollback-exception. Throwing rollback-exception. Original application exception: ", originalException);
+			rollbackException.addSuppressed(originalException);
 			throw rollbackException;
 		}
 	}
 
 	public interface DoInTransaction<T> {
-		T doInTransaction();
+		T doInTransaction(Connection c);
 	}
 }

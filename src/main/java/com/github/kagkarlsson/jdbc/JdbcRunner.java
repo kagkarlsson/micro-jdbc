@@ -36,6 +36,8 @@ public class JdbcRunner {
 		this(new ConnectionSupplier() {
 			@Override
 			public Connection getConnection() throws SQLException {
+				// detect if TransactionManager has an ongoing transaction
+				// if so, use that, but should never commit here...
 				return dataSource.getConnection();
 			}
 
@@ -48,6 +50,23 @@ public class JdbcRunner {
 
 	public JdbcRunner(ConnectionSupplier connectionSupplier) {
 		this.connectionSupplier = connectionSupplier;
+	}
+
+	public <T> T inTransaction(Function<JdbcRunner, T> doInTransaction) {
+		return new TransactionManager(connectionSupplier).inTransaction(c -> {
+			final JdbcRunner jdbc = new JdbcRunner(new ConnectionSupplier() {
+				@Override
+				public Connection getConnection() {
+					return c;
+				}
+
+				@Override
+				public boolean commitWhenAutocommitDisabled() {
+					return false;
+				}
+			});
+			return doInTransaction.apply(jdbc);
+		});
 	}
 
 	public int execute(String query, PreparedStatementSetter setParameters) {
@@ -80,16 +99,12 @@ public class JdbcRunner {
 				} catch (SQLException e) {
 					throw new SQLRuntimeException(e);
 				}
+
 				try {
 					LOG.trace("Executing prepared statement");
 					preparedStatement.execute();
-					T returnValue = afterExecution.doAfterExecution(preparedStatement);
-
-					commitIfNecessary(c);
-
-					return returnValue;
+					return afterExecution.doAfterExecution(preparedStatement);
 				} catch (SQLException e) {
-					rollbackIfNecessary(c);
 					throw translateException(e);
 				}
 
@@ -137,7 +152,12 @@ public class JdbcRunner {
 		}
 
 		try {
-			return doWithConnection.apply(c);
+			final T result = doWithConnection.apply(c);
+			commitIfNecessary(c);
+			return result;
+		} catch (RuntimeException | Error e) {
+			rollbackIfNecessary(c);
+			throw e;
 		} finally {
 			nonThrowingClose(c);
 		}
