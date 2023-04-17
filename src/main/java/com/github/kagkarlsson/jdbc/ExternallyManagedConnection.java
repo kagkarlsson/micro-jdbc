@@ -16,11 +16,27 @@
 package com.github.kagkarlsson.jdbc;
 
 import java.sql.Connection;
-import java.sql.SQLException;
 
-public interface ConnectionSupplier {
-    Connection getConnection() throws SQLException;
-    boolean commitWhenAutocommitDisabled();
-    boolean isExternallyManagedConnection();
+public class ExternallyManagedConnection implements ConnectionSupplier {
 
+    private final Connection externallyManagedConnection;
+
+    public ExternallyManagedConnection(Connection externallyManagedConnection) {
+        this.externallyManagedConnection = externallyManagedConnection;
+    }
+
+    @Override
+    public Connection getConnection() {
+        return externallyManagedConnection;
+    }
+
+    @Override
+    public boolean commitWhenAutocommitDisabled() {
+        return false;
+    }
+
+    @Override
+    public boolean isExternallyManagedConnection() {
+        return true;
+    }
 }

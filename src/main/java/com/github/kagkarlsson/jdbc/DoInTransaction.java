@@ -16,11 +16,7 @@
 package com.github.kagkarlsson.jdbc;
 
 import java.sql.Connection;
-import java.sql.SQLException;
 
-public interface ConnectionSupplier {
-    Connection getConnection() throws SQLException;
-    boolean commitWhenAutocommitDisabled();
-    boolean isExternallyManagedConnection();
-
+public interface DoInTransaction<T> {
+    T doInTransaction(Connection c);
 }

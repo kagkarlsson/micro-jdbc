@@ -18,7 +18,6 @@ package com.github.kagkarlsson.jdbc;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 
@@ -27,9 +26,9 @@ public class TransactionManager {
 	private static final Logger LOG = LoggerFactory.getLogger(TransactionManager.class);
 
 	ThreadLocal<Connection> currentTransaction = new ThreadLocal<>();
-	private final DataSource dataSource;
+	private final ConnectionSupplier dataSource;
 
-	public TransactionManager(DataSource dataSource) {
+	public TransactionManager(ConnectionSupplier dataSource) {
 		this.dataSource = dataSource;
 	}
 
@@ -38,41 +37,44 @@ public class TransactionManager {
 			throw new SQLRuntimeException("Cannot start new transaction when there already is an ongoing transaction.");
 		}
 
-		boolean restoreAutocommit = false;
 		try (Connection connection = dataSource.getConnection()) {
+			boolean restoreAutocommit = false;
 
 			if (connection.getAutoCommit()) {
 				connection.setAutoCommit(false);
 				restoreAutocommit = true;
 			}
 
-			final T result;
 			try {
-				currentTransaction.set(connection);
-				result = doInTransaction.doInTransaction();
-			} catch (SQLRuntimeException applicationException) {
-				rollback(connection, applicationException);
-				throw applicationException;
+				final T result;
+				try {
+					currentTransaction.set(connection);
+					result = doInTransaction.doInTransaction(connection);
+				} catch (RuntimeException applicationException) {
+					throw rollback(connection, applicationException);
+				}
+
+				commit(connection); // might throw
+				return result;
+			} finally {
+				if (restoreAutocommit) {
+					tryRestoreAutocommit(connection);
+				}
 			}
 
-			commit(connection);
-			if (restoreAutocommit) {
-				restoreAutocommit(connection);
-			}
-			return result;
-
-		} catch (SQLException openCloseException) {
-			throw new SQLRuntimeException(openCloseException);
+		} catch (SQLException openCloseAutocommitException) {
+			throw new SQLRuntimeException(openCloseAutocommitException);
 		} finally {
 			currentTransaction.remove();
 		}
 	}
 
-	private void restoreAutocommit(Connection connection) {
+	private void tryRestoreAutocommit(Connection connection) {
 		try {
 			connection.setAutoCommit(true);
 		} catch (SQLException e) {
-			throw new SQLRuntimeException("Exception when restoring autocommit on connection. Transaction is already committed, but connection might be broken afterwards.", e);
+			LOG.error("Failed to restore autocommit for Connection. Not throwing exception since the transaction has " +
+					"already committed. Hopefully the connection-pool will mark the Connection as broken and not reuse.", e);
 		}
 	}
 
@@ -81,23 +83,24 @@ public class TransactionManager {
 		try {
 			connection.commit();
 		} catch (SQLException commitException) {
-			rollback(connection, commitException);
+			throw rollback(connection, new SQLRuntimeException(commitException));
 		}
 	}
 
-	private void rollback(Connection connection, Throwable originalException) {
+	private RuntimeException rollback(Connection connection, RuntimeException originalException) {
 		try {
 			connection.rollback();
+			return originalException;
 		} catch (SQLException rollbackException) {
 			LOG.error("Original application exception overridden by rollback-exception. Throwing rollback-exception. Original application exception: ", originalException);
-			throw new SQLRuntimeException(rollbackException);
+			final SQLRuntimeException rollbackRuntimeException = new SQLRuntimeException(rollbackException);
+			rollbackRuntimeException.addSuppressed(originalException);
+			return rollbackRuntimeException;
 		} catch (RuntimeException rollbackException) {
 			LOG.error("Original application exception overridden by rollback-exception. Throwing rollback-exception. Original application exception: ", originalException);
-			throw rollbackException;
+			rollbackException.addSuppressed(originalException);
+			return rollbackException;
 		}
 	}
 
-	public interface DoInTransaction<T> {
-		T doInTransaction();
-	}
 }

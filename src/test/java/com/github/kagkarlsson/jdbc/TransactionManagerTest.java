@@ -1,21 +1,23 @@
 package com.github.kagkarlsson.jdbc;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.MockitoAnnotations;
+import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-import static org.hamcrest.Matchers.nullValue;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.fail;
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.*;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class TransactionManagerTest {
 
 	@Mock
@@ -24,17 +26,17 @@ public class TransactionManagerTest {
 	private Connection connection;
 	private TransactionManager tm;
 
-	@Before
+	@BeforeEach
 	public void setUp() throws SQLException {
 		when(dataSource.getConnection()).thenReturn(connection);
 		when(connection.getAutoCommit()).thenReturn(false);
 
-		tm = new TransactionManager(dataSource);
+		tm = new TransactionManager(new DataSourceConnectionSupplier(dataSource, false));
 	}
 
 	@Test
 	public void should_commit_if_no_exceptions() throws SQLException {
-		tm.inTransaction(() -> null);
+		tm.inTransaction((DoInTransaction<Void>) c -> null);
 		verify(connection).getAutoCommit();
 		verify(connection).commit();
 		verify(connection).close();
@@ -46,7 +48,7 @@ public class TransactionManagerTest {
 	@Test
 	public void should_rollback_if_exception() throws SQLException {
 		try {
-			tm.inTransaction(() -> {throw new SQLRuntimeException();});
+			tm.inTransaction((DoInTransaction<Void>) c -> {throw new SQLRuntimeException();});
 			fail("Should have thrown exception");
 		} catch (SQLRuntimeException e) {
 		}
@@ -63,7 +65,7 @@ public class TransactionManagerTest {
 	public void should_rollback_if_sql_exception_on_commit() throws SQLException {
 		doThrow(new SQLException()).when(connection).commit();
 		try {
-			tm.inTransaction(() -> null);
+			tm.inTransaction((DoInTransaction<Void>) c -> null);
 		} catch (SQLRuntimeException e) {
 		}
 
@@ -81,7 +83,7 @@ public class TransactionManagerTest {
 		doThrow(new SQLException()).when(connection).commit();
 		doThrow(new SQLException()).when(connection).rollback();
 		try {
-			tm.inTransaction(() -> null);
+			tm.inTransaction((DoInTransaction<Void>) c -> null);
 		} catch (SQLRuntimeException e) {
 		}
 
@@ -97,7 +99,7 @@ public class TransactionManagerTest {
 	@Test
 	public void should_restore_autocommit_if_enabled_on_connection_open() throws SQLException {
 		when(connection.getAutoCommit()).thenReturn(true);
-		tm.inTransaction(() -> null);
+		tm.inTransaction((DoInTransaction<Void>) c -> null);
 
 		verify(connection).getAutoCommit();
 		verify(connection).setAutoCommit(true);

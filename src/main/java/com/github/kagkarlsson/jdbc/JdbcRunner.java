@@ -33,21 +33,18 @@ public class JdbcRunner {
 	}
 
 	public JdbcRunner(DataSource dataSource, boolean commitWhenAutocommitDisabled) {
-		this(new ConnectionSupplier() {
-			@Override
-			public Connection getConnection() throws SQLException {
-				return dataSource.getConnection();
-			}
-
-			@Override
-			public boolean commitWhenAutocommitDisabled() {
-				return commitWhenAutocommitDisabled;
-			}
-		});
+		this(new DataSourceConnectionSupplier(dataSource, commitWhenAutocommitDisabled));
 	}
 
 	public JdbcRunner(ConnectionSupplier connectionSupplier) {
 		this.connectionSupplier = connectionSupplier;
+	}
+
+	public <T> T inTransaction(Function<JdbcRunner, T> doInTransaction) {
+		return new TransactionManager(connectionSupplier).inTransaction(c -> {
+			final JdbcRunner jdbc = new JdbcRunner(new ExternallyManagedConnection(c));
+			return doInTransaction.apply(jdbc);
+		});
 	}
 
 	public int execute(String query, PreparedStatementSetter setParameters) {
@@ -80,16 +77,12 @@ public class JdbcRunner {
 				} catch (SQLException e) {
 					throw new SQLRuntimeException(e);
 				}
+
 				try {
 					LOG.trace("Executing prepared statement");
 					preparedStatement.execute();
-					T returnValue = afterExecution.doAfterExecution(preparedStatement);
-
-					commitIfNecessary(c);
-
-					return returnValue;
+					return afterExecution.doAfterExecution(preparedStatement);
 				} catch (SQLException e) {
-					rollbackIfNecessary(c);
 					throw translateException(e);
 				}
 
@@ -101,7 +94,9 @@ public class JdbcRunner {
 
 	private void commitIfNecessary(Connection c) {
 		try {
-			if (connectionSupplier.commitWhenAutocommitDisabled() && !c.getAutoCommit()) {
+			if (!connectionSupplier.isExternallyManagedConnection()
+					&& connectionSupplier.commitWhenAutocommitDisabled()
+					&& !c.getAutoCommit()) {
 				c.commit();
 			}
 		} catch (SQLException e) {
@@ -109,13 +104,18 @@ public class JdbcRunner {
 		}
 	}
 
-	private void rollbackIfNecessary(Connection c) {
+	private RuntimeException rollbackIfNecessary(Connection c, RuntimeException originalException) {
 		try {
-			if (connectionSupplier.commitWhenAutocommitDisabled() && !c.getAutoCommit()) {
+			if (!connectionSupplier.isExternallyManagedConnection()
+					&& connectionSupplier.commitWhenAutocommitDisabled()
+					&& !c.getAutoCommit()) {
 				c.rollback();
 			}
+			return originalException;
 		} catch (SQLException e) {
-			throw new SQLRuntimeException("Failed to rollback.", e);
+			SQLRuntimeException rollbackException = new SQLRuntimeException("Failed to rollback.", e);
+			rollbackException.addSuppressed(originalException);
+			return rollbackException;
 		}
 	}
 
@@ -137,9 +137,16 @@ public class JdbcRunner {
 		}
 
 		try {
-			return doWithConnection.apply(c);
+			final T result = doWithConnection.apply(c);
+			commitIfNecessary(c);
+			return result;
+		} catch (RuntimeException e) {
+			throw rollbackIfNecessary(c, e);
 		} finally {
-			nonThrowingClose(c);
+			// Do not close when connection is managed by TransactionManager
+			if (!connectionSupplier.isExternallyManagedConnection()) {
+				nonThrowingClose(c);
+			}
 		}
 	}
 
