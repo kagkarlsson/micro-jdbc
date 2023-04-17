@@ -42,22 +42,7 @@ public class JdbcRunner {
 
 	public <T> T inTransaction(Function<JdbcRunner, T> doInTransaction) {
 		return new TransactionManager(connectionSupplier).inTransaction(c -> {
-			final JdbcRunner jdbc = new JdbcRunner(new ConnectionSupplier() {
-				@Override
-				public Connection getConnection() {
-					return c;
-				}
-
-				@Override
-				public boolean commitWhenAutocommitDisabled() {
-					return false;
-				}
-
-				@Override
-				public boolean isExternallyManagedConnection() {
-					return true;
-				}
-			});
+			final JdbcRunner jdbc = new JdbcRunner(new ExternallyManagedConnection(c));
 			return doInTransaction.apply(jdbc);
 		});
 	}
