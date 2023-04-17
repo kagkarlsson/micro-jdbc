@@ -33,19 +33,7 @@ public class JdbcRunner {
 	}
 
 	public JdbcRunner(DataSource dataSource, boolean commitWhenAutocommitDisabled) {
-		this(new ConnectionSupplier() {
-			@Override
-			public Connection getConnection() throws SQLException {
-				// detect if TransactionManager has an ongoing transaction
-				// if so, use that, but should never commit here...
-				return dataSource.getConnection();
-			}
-
-			@Override
-			public boolean commitWhenAutocommitDisabled() {
-				return commitWhenAutocommitDisabled;
-			}
-		});
+		this(new DataSourceConnectionSupplier(dataSource, commitWhenAutocommitDisabled));
 	}
 
 	public JdbcRunner(ConnectionSupplier connectionSupplier) {
@@ -63,6 +51,11 @@ public class JdbcRunner {
 				@Override
 				public boolean commitWhenAutocommitDisabled() {
 					return false;
+				}
+
+				@Override
+				public boolean isExternallyManagedConnection() {
+					return true;
 				}
 			});
 			return doInTransaction.apply(jdbc);
@@ -116,7 +109,9 @@ public class JdbcRunner {
 
 	private void commitIfNecessary(Connection c) {
 		try {
-			if (connectionSupplier.commitWhenAutocommitDisabled() && !c.getAutoCommit()) {
+			if (!connectionSupplier.isExternallyManagedConnection()
+					&& connectionSupplier.commitWhenAutocommitDisabled()
+					&& !c.getAutoCommit()) {
 				c.commit();
 			}
 		} catch (SQLException e) {
@@ -126,7 +121,9 @@ public class JdbcRunner {
 
 	private void rollbackIfNecessary(Connection c) {
 		try {
-			if (connectionSupplier.commitWhenAutocommitDisabled() && !c.getAutoCommit()) {
+			if (!connectionSupplier.isExternallyManagedConnection()
+					&& connectionSupplier.commitWhenAutocommitDisabled()
+					&& !c.getAutoCommit()) {
 				c.rollback();
 			}
 		} catch (SQLException e) {
@@ -156,10 +153,13 @@ public class JdbcRunner {
 			commitIfNecessary(c);
 			return result;
 		} catch (RuntimeException | Error e) {
-			rollbackIfNecessary(c);
+			rollbackIfNecessary(c); // FIXLATER: add surpressed exception
 			throw e;
 		} finally {
-			nonThrowingClose(c);
+			// Do not close when connection is managed by TransactionManager
+			if (!connectionSupplier.isExternallyManagedConnection()) {
+				nonThrowingClose(c);
+			}
 		}
 	}
 

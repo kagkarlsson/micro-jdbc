@@ -1,9 +1,8 @@
 package com.github.kagkarlsson.jdbc;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 import javax.sql.DataSource;
 import java.io.PrintWriter;
@@ -13,19 +12,18 @@ import java.sql.SQLFeatureNotSupportedException;
 import java.util.logging.Logger;
 
 import static com.github.kagkarlsson.jdbc.PreparedStatementSetter.NOOP;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.*;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
 
-public class ExternallyManagedTransactionTest {
+public class CommitWhenAutocommitDisabledTest {
 
-    @Rule
-    public HsqlTestDatabaseRule database = new HsqlTestDatabaseRule();
-    @Rule
-    public ExpectedException expectedException = ExpectedException.none();
+    @RegisterExtension
+    public HsqlExtension database = new HsqlExtension();
+
     private JdbcRunner internalTransactions;
     private JdbcRunner externalTransactions;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         internalTransactions = new JdbcRunner(new DisableAutoCommit(database.getDataSource()), true);
         externalTransactions = new JdbcRunner(new DisableAutoCommit(database.getDataSource()), false);
