@@ -119,15 +119,18 @@ public class JdbcRunner {
 		}
 	}
 
-	private void rollbackIfNecessary(Connection c) {
+	private RuntimeException rollbackIfNecessary(Connection c, RuntimeException originalException) {
 		try {
 			if (!connectionSupplier.isExternallyManagedConnection()
 					&& connectionSupplier.commitWhenAutocommitDisabled()
 					&& !c.getAutoCommit()) {
 				c.rollback();
 			}
+			return originalException;
 		} catch (SQLException e) {
-			throw new SQLRuntimeException("Failed to rollback.", e);
+			SQLRuntimeException rollbackException = new SQLRuntimeException("Failed to rollback.", e);
+			rollbackException.addSuppressed(originalException);
+			return rollbackException;
 		}
 	}
 
@@ -152,9 +155,8 @@ public class JdbcRunner {
 			final T result = doWithConnection.apply(c);
 			commitIfNecessary(c);
 			return result;
-		} catch (RuntimeException | Error e) {
-			rollbackIfNecessary(c); // FIXLATER: add surpressed exception
-			throw e;
+		} catch (RuntimeException e) {
+			throw rollbackIfNecessary(c, e);
 		} finally {
 			// Do not close when connection is managed by TransactionManager
 			if (!connectionSupplier.isExternallyManagedConnection()) {
