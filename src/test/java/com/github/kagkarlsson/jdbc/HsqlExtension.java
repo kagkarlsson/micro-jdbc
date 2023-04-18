@@ -10,7 +10,7 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import javax.sql.DataSource;
 
 public class HsqlExtension implements BeforeEachCallback, AfterEachCallback {
-    private JDBCDataSource dataSource;
+    private DataSource dataSource;
 
     @Override
     public void beforeEach(ExtensionContext extensionContext) throws Exception {
@@ -18,6 +18,12 @@ public class HsqlExtension implements BeforeEachCallback, AfterEachCallback {
         ds.setUrl("jdbc:hsqldb:mem:jdbcrunner");
         ds.setUser("sa");
 
+        // For jdbc-testing
+//        dataSource = ProxyDataSourceBuilder
+//                .create(ds)
+//                .logQueryBySlf4j()
+//                .methodListener(new TracingMethodListener())
+//                .build();
         dataSource = ds;
     }
 
