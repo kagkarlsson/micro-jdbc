@@ -48,18 +48,35 @@ public class JdbcRunner {
 	}
 
 	public int execute(String query, PreparedStatementSetter setParameters) {
-		return execute(query, setParameters, Statement::getUpdateCount);
+		return execute(query, setParameters, PreparedStatementExecutor.EXECUTE, new AfterExecution.ReturnStatementUpdateCount<>());
 	}
 
 	public <T> List<T> query(String query, PreparedStatementSetter setParameters, RowMapper<T> rowMapper) {
-		return execute(query, setParameters, (PreparedStatement p) -> mapResultSet(p, rowMapper));
+		return execute(query, setParameters, PreparedStatementExecutor.EXECUTE, (p, executeResult) -> mapResultSet(p, rowMapper));
 	}
 
 	public <T> T query(String query, PreparedStatementSetter setParameters, ResultSetMapper<T> resultSetMapper) {
-		return execute(query, setParameters, (PreparedStatement p) -> mapResultSet(p, resultSetMapper));
+		return execute(query, setParameters, PreparedStatementExecutor.EXECUTE, (p, executeResult) -> mapResultSet(p, resultSetMapper));
 	}
 
-	private <T> T execute(String query, PreparedStatementSetter setParameters, AfterExecution<T> afterExecution) {
+	public <T> T execute(String query, PreparedStatementSetter setParameters, AfterExecution<T,Boolean> afterExecution) {
+		return execute(query, setParameters, PreparedStatementExecutor.EXECUTE, afterExecution);
+	}
+
+	public <U> int[] executeBatch(String query, List<U> batchValues, BatchPreparedStatementSetter<U> setParameters) {
+
+		PreparedStatementSetter setAllBatches = preparedStatement -> {
+			for (U batchValue : batchValues) {
+				setParameters.setParametersForRow(batchValue, preparedStatement);
+				preparedStatement.addBatch();
+			}
+		};
+
+		return execute(query, setAllBatches, PreparedStatementExecutor.EXECUTE_BATCH, (executedPreparedStatement, executeResult) -> executeResult);
+	}
+
+	private <T,U> T execute(String query, PreparedStatementSetter setParameters,
+						  PreparedStatementExecutor<U> executePreparedStatement, AfterExecution<T,U> afterExecution) {
 		return withConnection(c -> {
 
 			PreparedStatement preparedStatement = null;
@@ -80,8 +97,8 @@ public class JdbcRunner {
 
 				try {
 					LOG.trace("Executing prepared statement");
-					preparedStatement.execute();
-					return afterExecution.doAfterExecution(preparedStatement);
+					U executeResult = executePreparedStatement.execute(preparedStatement);
+					return afterExecution.doAfterExecution(preparedStatement, executeResult);
 				} catch (SQLException e) {
 					throw translateException(e);
 				}
@@ -202,8 +219,16 @@ public class JdbcRunner {
 		}
 	}
 
-	interface AfterExecution<T> {
-		T doAfterExecution(PreparedStatement executedPreparedStatement) throws SQLException;
+	interface AfterExecution<T,U> {
+		T doAfterExecution(PreparedStatement executedPreparedStatement, U executeResult) throws SQLException;
+
+		class ReturnStatementUpdateCount<U> implements AfterExecution<Integer,U> {
+
+			@Override
+			public Integer doAfterExecution(PreparedStatement executedPreparedStatement, U executeResult) throws SQLException {
+				return executedPreparedStatement.getUpdateCount();
+			}
+		}
 	}
 
 	interface DoWithResultSet<T> {
