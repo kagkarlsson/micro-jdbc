@@ -10,6 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.IntStream;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -69,13 +70,13 @@ public class JdbcRunnerTest {
     public void test_batch_insert() {
         jdbcRunner.execute("create table table1 ( column1 INT);", PreparedStatementSetter.NOOP);
         List<Integer> values = Arrays.asList(1, 2, 3);
-        int updated = jdbcRunner.executeBatch(
+        int[] updated = jdbcRunner.executeBatch(
                 "insert into table1(column1) values (?)",
                 values,
                 (value, preparedStatement) -> preparedStatement.setInt(1, value));
 
         final List<Integer> rowMapped = jdbcRunner.query("select * from table1 order by column1 asc", PreparedStatementSetter.NOOP, new TableRowMapper());
-        assertThat(updated, is(3));
+        assertThat(IntStream.of(updated).sum(), is(3));
         assertThat(rowMapped, hasSize(3));
         assertThat(rowMapped.get(0), is(1));
         assertThat(rowMapped.get(1), is(2));

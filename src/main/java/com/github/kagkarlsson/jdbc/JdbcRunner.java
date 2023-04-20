@@ -63,7 +63,7 @@ public class JdbcRunner {
 		return execute(query, setParameters, PreparedStatementExecutor.EXECUTE, afterExecution);
 	}
 
-	public <U> int executeBatch(String query, List<U> batchValues, BatchPreparedStatementSetter<U> setParameters) {
+	public <U> int[] executeBatch(String query, List<U> batchValues, BatchPreparedStatementSetter<U> setParameters) {
 
 		PreparedStatementSetter setAllBatches = preparedStatement -> {
 			for (U batchValue : batchValues) {
@@ -72,13 +72,7 @@ public class JdbcRunner {
 			}
 		};
 
-		return execute(query, setAllBatches, PreparedStatementExecutor.EXECUTE_BATCH, (executedPreparedStatement, executeResult) -> {
-			int sum = 0;
-			for (int j : executeResult) {
-				sum += j;
-			}
-			return sum;
-		});
+		return execute(query, setAllBatches, PreparedStatementExecutor.EXECUTE_BATCH, (executedPreparedStatement, executeResult) -> executeResult);
 	}
 
 	private <T,U> T execute(String query, PreparedStatementSetter setParameters,
