@@ -1,56 +1,122 @@
 package com.github.kagkarlsson.jdbc;
 
-import static com.github.kagkarlsson.jdbc.PreparedStatementSetter.NOOP;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
+import javax.sql.DataSource;
 import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.logging.Logger;
-import javax.sql.DataSource;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.RegisterExtension;
+
+import static com.github.kagkarlsson.jdbc.Mappers.SINGLE_INT;
+import static com.github.kagkarlsson.jdbc.PreparedStatementSetter.NOOP;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 public class CommitWhenAutocommitDisabledTest {
 
-  @RegisterExtension public HsqlExtension database = new HsqlExtension();
+  @RegisterExtension
+  public HsqlExtension database = new HsqlExtension();
 
-  private JdbcRunner internalTransactions;
-  private JdbcRunner externalTransactions;
+  private JdbcRunner autocommitDisabledButBehaviorOverridden;
+  private JdbcRunner autocommitDisabled;
 
   @BeforeEach
-  public void setUp() {
-    internalTransactions = new JdbcRunner(new DisableAutoCommit(database.getDataSource()), true);
-    externalTransactions = new JdbcRunner(new DisableAutoCommit(database.getDataSource()), false);
+  public void setUp() throws SQLException {
+    autocommitDisabledButBehaviorOverridden = new JdbcRunner(new DisableAutoCommit(database.getDataSource()), true);
+    autocommitDisabled = new JdbcRunner(new DisableAutoCommit(database.getDataSource()), false);
   }
 
   @Test
-  public void test_externally_managed_transaction() {
-    internalTransactions.execute("create table table1 ( column1 INT);", NOOP);
-    assertThat(
-        internalTransactions.execute("insert into table1(column1) values (?)", setInt(1)), is(1));
-    assertThat(
-        internalTransactions.query(
-            "select * from table1", PreparedStatementSetter.NOOP, Mappers.SINGLE_INT),
-        is(1));
+  public void test_overridden_autocommit_behavior() {
+    autocommitDisabledButBehaviorOverridden.execute("create table table1 ( column1 INT);", NOOP);
+    assertThat(autocommitDisabledButBehaviorOverridden.execute("insert into table1(column1) values (?)", setInt(1)), is(1));
+    assertThat(autocommitDisabledButBehaviorOverridden.query("select * from table1", NOOP, SINGLE_INT), is(1));
 
-    externalTransactions.execute("update table1 set column1 = ?", setInt(5));
+    autocommitDisabled.execute("update table1 set column1 = ?", setInt(5));
     // should not have been committed
-    assertThat(
-        internalTransactions.query(
-            "select * from table1", PreparedStatementSetter.NOOP, Mappers.SINGLE_INT),
-        is(1));
+    assertThat(autocommitDisabledButBehaviorOverridden.query("select * from table1", NOOP, SINGLE_INT), is(1));
 
-    internalTransactions.execute("update table1 set column1 = ?", setInt(2));
+    autocommitDisabledButBehaviorOverridden.execute("update table1 set column1 = ?", setInt(2));
     // updated
-    assertThat(
-        internalTransactions.query(
-            "select * from table1", PreparedStatementSetter.NOOP, Mappers.SINGLE_INT),
-        is(2));
+    assertThat(autocommitDisabledButBehaviorOverridden.query("select * from table1", NOOP, SINGLE_INT), is(2));
+
+    autocommitDisabled.inTransaction(txJdbc -> {
+      txJdbc.execute("update table1 set column1 = ?", setInt(10));
+      return null;
+    });
+    // updated
+    assertThat(autocommitDisabled.query("select * from table1", NOOP, SINGLE_INT), is(10));
+
+    try {
+      autocommitDisabled.inTransaction(txJdbc -> {
+        txJdbc.execute("update table1 set column1 = ?", setInt(11));
+        throw new RuntimeException();
+      });
+    } catch (Exception ignored) {}
+    // not updated
+    assertThat(autocommitDisabled.query("select * from table1", NOOP, SINGLE_INT), is(10));
+
+    autocommitDisabledButBehaviorOverridden.inTransaction(txJdbc -> {
+      txJdbc.execute("update table1 set column1 = ?", setInt(10));
+      return null;
+    });
+    // updated
+    assertThat(autocommitDisabledButBehaviorOverridden.query("select * from table1", NOOP, SINGLE_INT), is(10));
+
+    try {
+      autocommitDisabledButBehaviorOverridden.inTransaction(txJdbc -> {
+        txJdbc.execute("update table1 set column1 = ?", setInt(11));
+        throw new RuntimeException();
+      });
+    } catch (Exception ignored) {}
+    // not updated
+    assertThat(autocommitDisabledButBehaviorOverridden.query("select * from table1", NOOP, SINGLE_INT), is(10));
   }
+
+  @Test
+  public void test_transactions() {
+    autocommitDisabledButBehaviorOverridden.execute("create table table1 ( column1 INT);", NOOP);
+    assertThat(autocommitDisabledButBehaviorOverridden.execute("insert into table1(column1) values (?)", setInt(1)), is(1));
+    assertThat(autocommitDisabledButBehaviorOverridden.query("select * from table1", NOOP, SINGLE_INT), is(1));
+
+
+    autocommitDisabled.inTransaction(txJdbc -> {
+      txJdbc.execute("update table1 set column1 = ?", setInt(10));
+      return null;
+    });
+    // updated
+    assertThat(autocommitDisabled.query("select * from table1", NOOP, SINGLE_INT), is(10));
+
+    try {
+      autocommitDisabled.inTransaction(txJdbc -> {
+        txJdbc.execute("update table1 set column1 = ?", setInt(11));
+        throw new RuntimeException();
+      });
+    } catch (Exception ignored) {}
+    // not updated
+    assertThat(autocommitDisabled.query("select * from table1", NOOP, SINGLE_INT), is(10));
+
+    autocommitDisabledButBehaviorOverridden.inTransaction(txJdbc -> {
+      txJdbc.execute("update table1 set column1 = ?", setInt(12));
+      return null;
+    });
+    // updated
+    assertThat(autocommitDisabledButBehaviorOverridden.query("select * from table1", NOOP, SINGLE_INT), is(12));
+
+    try {
+      autocommitDisabledButBehaviorOverridden.inTransaction(txJdbc -> {
+        txJdbc.execute("update table1 set column1 = ?", setInt(13));
+        throw new RuntimeException();
+      });
+    } catch (Exception ignored) {}
+    // not updated
+    assertThat(autocommitDisabledButBehaviorOverridden.query("select * from table1", NOOP, SINGLE_INT), is(12));
+  }
+
 
   private PreparedStatementSetter setInt(int value) {
     return ps -> ps.setInt(1, value);
@@ -110,4 +176,5 @@ public class CommitWhenAutocommitDisabledTest {
       return underlying.isWrapperFor(iface);
     }
   }
+
 }

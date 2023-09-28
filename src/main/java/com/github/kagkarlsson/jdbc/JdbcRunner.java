@@ -24,27 +24,41 @@ import org.slf4j.LoggerFactory;
 public class JdbcRunner {
   private static final Logger LOG = LoggerFactory.getLogger(JdbcRunner.class);
   private final ConnectionSupplier connectionSupplier;
+  private final TransactionContextProvider transactionContextProvider;
 
   public JdbcRunner(DataSource dataSource) {
     this(dataSource, false);
   }
 
   public JdbcRunner(DataSource dataSource, boolean commitWhenAutocommitDisabled) {
-    this(new DataSourceConnectionSupplier(dataSource, commitWhenAutocommitDisabled));
+    this(new DataSourceConnectionSupplier(dataSource, commitWhenAutocommitDisabled), new ThreadLocalTransactionContextProvider());
   }
 
-  public JdbcRunner(ConnectionSupplier connectionSupplier) {
+  public JdbcRunner(DataSource dataSource, boolean commitWhenAutocommitDisabled, TransactionContextProvider transactionContextProvider) {
+    this(new DataSourceConnectionSupplier(dataSource, commitWhenAutocommitDisabled), transactionContextProvider);
+  }
+
+  public JdbcRunner(ConnectionSupplier connectionSupplier,
+                    TransactionContextProvider transactionContextProvider) {
     this.connectionSupplier = connectionSupplier;
+    this.transactionContextProvider = transactionContextProvider;
   }
 
+  /**
+   * Creates a transactional JdbcRunner that can be used to execute operations in a single transaction.
+   * Will currently not detect externally managed transactions (e.g. Spring-transactions), only prevent
+   * nested transactions using <code>inTransaction(..)</code>.
+   * Will always commit or rollback.
+   * @param doInTransaction
+   * @return
+   * @param <T>
+   */
   public <T> T inTransaction(Function<JdbcRunner, T> doInTransaction) {
-    return new TransactionManager(connectionSupplier)
-        .inTransaction(
-            c -> {
-              final JdbcRunner jdbc = new JdbcRunner(new ExternallyManagedConnection(c));
-              return doInTransaction.apply(jdbc);
-            });
-  }
+      return new TransactionManager(connectionSupplier, transactionContextProvider).inTransaction(c -> {
+        final JdbcRunner jdbc = new JdbcRunner(new ExternallyManagedConnection(c), transactionContextProvider);
+        return doInTransaction.apply(jdbc);
+      });
+    }
 
   public int execute(String query, PreparedStatementSetter setParameters) {
     return execute(
@@ -136,9 +150,7 @@ public class JdbcRunner {
 
   private void commitIfNecessary(Connection c) {
     try {
-      if (!connectionSupplier.isExternallyManagedConnection()
-          && connectionSupplier.commitWhenAutocommitDisabled()
-          && !c.getAutoCommit()) {
+      if (shouldManageTransaction(c)) {
         c.commit();
       }
     } catch (SQLException e) {
@@ -148,9 +160,7 @@ public class JdbcRunner {
 
   private RuntimeException rollbackIfNecessary(Connection c, RuntimeException originalException) {
     try {
-      if (!connectionSupplier.isExternallyManagedConnection()
-          && connectionSupplier.commitWhenAutocommitDisabled()
-          && !c.getAutoCommit()) {
+      if (shouldManageTransaction(c)) {
         c.rollback();
       }
       return originalException;
@@ -158,6 +168,34 @@ public class JdbcRunner {
       SQLRuntimeException rollbackException = new SQLRuntimeException("Failed to rollback.", e);
       rollbackException.addSuppressed(originalException);
       return rollbackException;
+    }
+  }
+
+  private boolean shouldManageTransaction(Connection c) throws SQLException {
+    if (connectionSupplier.isExternallyManagedConnection()) {
+      // Do not commit/rollback since connection (and therefore transaction-lifecycle),
+      // is managed externally
+      return false;
+    }
+
+    if (c.getAutoCommit()) {
+      // AUTO-COMMIT=true
+      // Do not commit/rollback when auto-commit is enabled.
+      // Statements are auto-committed after they are run.
+      return false;
+    } else {
+      // AUTO-COMMIT=false
+      if (!connectionSupplier.commitWhenAutocommitDisabled()) {
+        // When auto-commit is disabled, we assume the transaction is externally managed
+        // unless otherwise specified
+        return false;
+      } else {
+        // Commit/rollback when auto-commit is disabled but the user has specified that
+        // they always want commit/rollback, even though their DataSource is giving out
+        // connections where auto-commit=false.
+        // This has been requested by users, but the use-case is not very clear
+        return true;
+      }
     }
   }
 
