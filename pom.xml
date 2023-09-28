@@ -31,6 +31,7 @@
 		<maven.compiler.target>1.8</maven.compiler.target>
 		<skipChecks>false</skipChecks>
 		<failOnMissingHeader>true</failOnMissingHeader>
+		<license.dir>${project.basedir}/.license</license.dir>
 	</properties>
 
 	<dependencyManagement>
@@ -140,13 +141,14 @@
 					<artifactId>license-maven-plugin</artifactId>
 					<version>2.11</version>
 					<configuration>
-						<header>src/main/license-header.txt</header>
+						<header>${license.dir}/license-header.txt</header>
 						<strictCheck>true</strictCheck>
 						<excludes>
 							<exclude>pom.xml</exclude>
 							<exclude>LICENSE*</exclude>
 							<exclude>.java-version</exclude>
 							<exclude>src/test/**</exclude>
+							<exclude>.github/**</exclude>
 						</excludes>
 						<failIfMissing>${failOnMissingHeader}</failIfMissing>
 					</configuration>
