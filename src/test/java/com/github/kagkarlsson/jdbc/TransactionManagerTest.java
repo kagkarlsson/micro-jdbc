@@ -1,29 +1,24 @@
 package com.github.kagkarlsson.jdbc;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.mockito.junit.MockitoJUnitRunner;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.SQLException;
-
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.*;
 
+import java.sql.Connection;
+import java.sql.SQLException;
+import javax.sql.DataSource;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 @ExtendWith(MockitoExtension.class)
 public class TransactionManagerTest {
 
-  @Mock
-  private DataSource dataSource;
-  @Mock
-  private Connection connection;
+  @Mock private DataSource dataSource;
+  @Mock private Connection connection;
   private TransactionManager tm;
   private ThreadLocalTransactionContextProvider txp;
 
@@ -33,9 +28,7 @@ public class TransactionManagerTest {
     when(connection.getAutoCommit()).thenReturn(false);
 
     txp = new ThreadLocalTransactionContextProvider();
-    tm = new TransactionManager(
-            new DataSourceConnectionSupplier(dataSource, false),
-            txp);
+    tm = new TransactionManager(new DataSourceConnectionSupplier(dataSource, false), txp);
   }
 
   @Test
@@ -52,7 +45,11 @@ public class TransactionManagerTest {
   @Test
   public void should_rollback_if_exception() throws SQLException {
     try {
-      tm.inTransaction((DoInTransaction<Void>) c -> {throw new SQLRuntimeException();});
+      tm.inTransaction(
+          (DoInTransaction<Void>)
+              c -> {
+                throw new SQLRuntimeException();
+              });
       fail("Should have thrown exception");
     } catch (SQLRuntimeException e) {
     }
@@ -114,5 +111,4 @@ public class TransactionManagerTest {
 
     assertThat(txp.getCurrent(), nullValue());
   }
-
 }

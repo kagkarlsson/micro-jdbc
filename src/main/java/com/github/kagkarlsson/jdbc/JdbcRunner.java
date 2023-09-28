@@ -31,34 +31,46 @@ public class JdbcRunner {
   }
 
   public JdbcRunner(DataSource dataSource, boolean commitWhenAutocommitDisabled) {
-    this(new DataSourceConnectionSupplier(dataSource, commitWhenAutocommitDisabled), new ThreadLocalTransactionContextProvider());
+    this(
+        new DataSourceConnectionSupplier(dataSource, commitWhenAutocommitDisabled),
+        new ThreadLocalTransactionContextProvider());
   }
 
-  public JdbcRunner(DataSource dataSource, boolean commitWhenAutocommitDisabled, TransactionContextProvider transactionContextProvider) {
-    this(new DataSourceConnectionSupplier(dataSource, commitWhenAutocommitDisabled), transactionContextProvider);
+  public JdbcRunner(
+      DataSource dataSource,
+      boolean commitWhenAutocommitDisabled,
+      TransactionContextProvider transactionContextProvider) {
+    this(
+        new DataSourceConnectionSupplier(dataSource, commitWhenAutocommitDisabled),
+        transactionContextProvider);
   }
 
-  public JdbcRunner(ConnectionSupplier connectionSupplier,
-                    TransactionContextProvider transactionContextProvider) {
+  public JdbcRunner(
+      ConnectionSupplier connectionSupplier,
+      TransactionContextProvider transactionContextProvider) {
     this.connectionSupplier = connectionSupplier;
     this.transactionContextProvider = transactionContextProvider;
   }
 
   /**
-   * Creates a transactional JdbcRunner that can be used to execute operations in a single transaction.
-   * Will currently not detect externally managed transactions (e.g. Spring-transactions), only prevent
-   * nested transactions using <code>inTransaction(..)</code>.
+   * Creates a transactional JdbcRunner that can be used to execute operations in a single
+   * transaction. Will currently not detect externally managed transactions (e.g.
+   * Spring-transactions), only prevent nested transactions using <code>inTransaction(..)</code>.
    * Will always commit or rollback.
+   *
    * @param doInTransaction
    * @return
    * @param <T>
    */
   public <T> T inTransaction(Function<JdbcRunner, T> doInTransaction) {
-      return new TransactionManager(connectionSupplier, transactionContextProvider).inTransaction(c -> {
-        final JdbcRunner jdbc = new JdbcRunner(new ExternallyManagedConnection(c), transactionContextProvider);
-        return doInTransaction.apply(jdbc);
-      });
-    }
+    return new TransactionManager(connectionSupplier, transactionContextProvider)
+        .inTransaction(
+            c -> {
+              final JdbcRunner jdbc =
+                  new JdbcRunner(new ExternallyManagedConnection(c), transactionContextProvider);
+              return doInTransaction.apply(jdbc);
+            });
+  }
 
   public int execute(String query, PreparedStatementSetter setParameters) {
     return execute(

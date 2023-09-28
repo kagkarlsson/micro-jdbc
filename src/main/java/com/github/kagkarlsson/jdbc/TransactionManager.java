@@ -24,17 +24,19 @@ public class TransactionManager {
   private final ConnectionSupplier dataSource;
   private TransactionContextProvider transactionContextProvider;
 
-  public TransactionManager(ConnectionSupplier dataSource, TransactionContextProvider transactionContextProvider) {
+  public TransactionManager(
+      ConnectionSupplier dataSource, TransactionContextProvider transactionContextProvider) {
     this.dataSource = dataSource;
     this.transactionContextProvider = transactionContextProvider;
   }
 
   public <T> T inTransaction(DoInTransaction<T> doInTransaction) {
     if (transactionContextProvider.getCurrent() != null) {
-      throw new SQLRuntimeException("Cannot start new transaction when there already" +
-              " is an ongoing transaction. Currently this simple mechanism is only" +
-              " guard against nested transactions from this TransactionManager. " +
-              " Could be extended to support detecting externally managed connections.");
+      throw new SQLRuntimeException(
+          "Cannot start new transaction when there already"
+              + " is an ongoing transaction. Currently this simple mechanism is only"
+              + " guard against nested transactions from this TransactionManager. "
+              + " Could be extended to support detecting externally managed connections.");
     }
 
     try (Connection connection = dataSource.getConnection()) {
