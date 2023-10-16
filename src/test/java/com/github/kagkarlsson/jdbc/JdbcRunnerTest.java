@@ -145,12 +145,29 @@ public class JdbcRunnerTest {
             txRunner.execute(INSERT, ps -> ps.setInt(1, 1));
             throw new RuntimeException();
           });
-    } catch (RuntimeException _ignored) {
+    } catch (RuntimeException ignored) {
     }
     assertThat(
         jdbcRunner.query(
             "select count(*) from table1", PreparedStatementSetter.NOOP, Mappers.SINGLE_INT),
         is(2));
+  }
+
+  @Test
+  public void nested_in_transction_not_allowed() {
+    jdbcRunner.execute("create table table1 ( column1 INT);", PreparedStatementSetter.NOOP);
+    RuntimeException ex =
+        Assertions.assertThrows(
+            RuntimeException.class,
+            () -> {
+              jdbcRunner.inTransaction(
+                  txRunner -> {
+                    return txRunner.inTransaction(
+                        tx2 -> {
+                          return null;
+                        });
+                  });
+            });
   }
 
   private static class TableRowMapper implements RowMapper<Integer> {

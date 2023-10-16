@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) Gustav Karlsson
  *
  * <p>Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file
@@ -21,18 +21,22 @@ import org.slf4j.LoggerFactory;
 public class TransactionManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(TransactionManager.class);
-
-  ThreadLocal<Connection> currentTransaction = new ThreadLocal<>();
   private final ConnectionSupplier dataSource;
+  private TransactionContextProvider transactionContextProvider;
 
-  public TransactionManager(ConnectionSupplier dataSource) {
+  public TransactionManager(
+      ConnectionSupplier dataSource, TransactionContextProvider transactionContextProvider) {
     this.dataSource = dataSource;
+    this.transactionContextProvider = transactionContextProvider;
   }
 
   public <T> T inTransaction(DoInTransaction<T> doInTransaction) {
-    if (currentTransaction.get() != null) {
+    if (transactionContextProvider.getCurrent() != null) {
       throw new SQLRuntimeException(
-          "Cannot start new transaction when there already is an ongoing transaction.");
+          "Cannot start new transaction when there already"
+              + " is an ongoing transaction. Currently this simple mechanism is only"
+              + " guard against nested transactions from this TransactionManager. "
+              + " Could be extended to support detecting externally managed connections.");
     }
 
     try (Connection connection = dataSource.getConnection()) {
@@ -46,7 +50,7 @@ public class TransactionManager {
       try {
         final T result;
         try {
-          currentTransaction.set(connection);
+          transactionContextProvider.setCurrent(new TransactionContext(connection));
           result = doInTransaction.doInTransaction(connection);
         } catch (RuntimeException applicationException) {
           throw rollback(connection, applicationException);
@@ -63,7 +67,7 @@ public class TransactionManager {
     } catch (SQLException openCloseAutocommitException) {
       throw new SQLRuntimeException(openCloseAutocommitException);
     } finally {
-      currentTransaction.remove();
+      transactionContextProvider.removeCurrent();
     }
   }
 

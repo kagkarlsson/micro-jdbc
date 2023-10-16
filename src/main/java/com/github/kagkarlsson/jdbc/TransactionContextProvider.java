@@ -13,13 +13,11 @@
  */
 package com.github.kagkarlsson.jdbc;
 
-import java.sql.Connection;
-import java.sql.SQLException;
+/** Make pluggable to support Loom ExecutionService. */
+public interface TransactionContextProvider {
+  TransactionContext getCurrent();
 
-public interface ConnectionSupplier {
-  Connection getConnection() throws SQLException;
+  void setCurrent(TransactionContext transactionContext);
 
-  boolean commitWhenAutocommitDisabled();
-
-  boolean isExternallyManagedConnection();
+  void removeCurrent();
 }

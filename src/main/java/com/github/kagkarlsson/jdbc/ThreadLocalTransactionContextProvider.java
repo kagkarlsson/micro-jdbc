@@ -13,13 +13,21 @@
  */
 package com.github.kagkarlsson.jdbc;
 
-import java.sql.Connection;
-import java.sql.SQLException;
+public class ThreadLocalTransactionContextProvider implements TransactionContextProvider {
+  private final ThreadLocal<TransactionContext> currentTransactionContext = new ThreadLocal<>();
 
-public interface ConnectionSupplier {
-  Connection getConnection() throws SQLException;
+  @Override
+  public TransactionContext getCurrent() {
+    return currentTransactionContext.get();
+  }
 
-  boolean commitWhenAutocommitDisabled();
+  @Override
+  public void setCurrent(TransactionContext transactionContext) {
+    currentTransactionContext.set(transactionContext);
+  }
 
-  boolean isExternallyManagedConnection();
+  @Override
+  public void removeCurrent() {
+    currentTransactionContext.remove();
+  }
 }

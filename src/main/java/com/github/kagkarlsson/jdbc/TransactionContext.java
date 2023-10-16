@@ -14,12 +14,15 @@
 package com.github.kagkarlsson.jdbc;
 
 import java.sql.Connection;
-import java.sql.SQLException;
 
-public interface ConnectionSupplier {
-  Connection getConnection() throws SQLException;
+public class TransactionContext {
+  private Connection c;
 
-  boolean commitWhenAutocommitDisabled();
+  public TransactionContext(Connection c) {
+    this.c = c;
+  }
 
-  boolean isExternallyManagedConnection();
+  public Connection getConnection() {
+    return c;
+  }
 }

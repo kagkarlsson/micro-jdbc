@@ -20,13 +20,15 @@ public class TransactionManagerTest {
   @Mock private DataSource dataSource;
   @Mock private Connection connection;
   private TransactionManager tm;
+  private ThreadLocalTransactionContextProvider txp;
 
   @BeforeEach
   public void setUp() throws SQLException {
     when(dataSource.getConnection()).thenReturn(connection);
     when(connection.getAutoCommit()).thenReturn(false);
 
-    tm = new TransactionManager(new DataSourceConnectionSupplier(dataSource, false));
+    txp = new ThreadLocalTransactionContextProvider();
+    tm = new TransactionManager(new DataSourceConnectionSupplier(dataSource, false), txp);
   }
 
   @Test
@@ -37,7 +39,7 @@ public class TransactionManagerTest {
     verify(connection).close();
     verifyNoMoreInteractions(connection);
 
-    assertThat(tm.currentTransaction.get(), nullValue());
+    assertThat(txp.getCurrent(), nullValue());
   }
 
   @Test
@@ -57,7 +59,7 @@ public class TransactionManagerTest {
     verify(connection).close();
     verifyNoMoreInteractions(connection);
 
-    assertThat(tm.currentTransaction.get(), nullValue());
+    assertThat(txp.getCurrent(), nullValue());
   }
 
   @Test
@@ -74,7 +76,7 @@ public class TransactionManagerTest {
     verify(connection).close();
     verifyNoMoreInteractions(connection);
 
-    assertThat(tm.currentTransaction.get(), nullValue());
+    assertThat(txp.getCurrent(), nullValue());
   }
 
   @Test
@@ -92,7 +94,7 @@ public class TransactionManagerTest {
     verify(connection).close();
     verifyNoMoreInteractions(connection);
 
-    assertThat(tm.currentTransaction.get(), nullValue());
+    assertThat(txp.getCurrent(), nullValue());
   }
 
   @Test
@@ -107,6 +109,6 @@ public class TransactionManagerTest {
     verify(connection).close();
     verifyNoMoreInteractions(connection);
 
-    assertThat(tm.currentTransaction.get(), nullValue());
+    assertThat(txp.getCurrent(), nullValue());
   }
 }
