@@ -73,18 +73,18 @@ public class CommitWhenAutocommitDisabledTest {
 
     autocommitDisabledButBehaviorOverridden.inTransaction(
         txJdbc -> {
-          txJdbc.execute("update table1 set column1 = ?", setInt(10));
+          txJdbc.execute("update table1 set column1 = ?", setInt(11));
           return null;
         });
     // updated
     assertThat(
         autocommitDisabledButBehaviorOverridden.query("select * from table1", NOOP, SINGLE_INT),
-        is(10));
+        is(11));
 
     try {
       autocommitDisabledButBehaviorOverridden.inTransaction(
           txJdbc -> {
-            txJdbc.execute("update table1 set column1 = ?", setInt(11));
+            txJdbc.execute("update table1 set column1 = ?", setInt(12));
             throw new RuntimeException();
           });
     } catch (Exception ignored) {
@@ -92,7 +92,7 @@ public class CommitWhenAutocommitDisabledTest {
     // not updated
     assertThat(
         autocommitDisabledButBehaviorOverridden.query("select * from table1", NOOP, SINGLE_INT),
-        is(10));
+        is(11));
   }
 
   @Test
